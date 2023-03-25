@@ -4,7 +4,7 @@
 *  assignment has been copied manually or electronically from any other source (including web sites) or 
 *  distributed to other students.
 * 
-*  Name: p__Kranti K C___ Student ID: ___146277215___ Date: ___3/24/2023___
+*  Name: p__Kranti KC___ Student ID: ___146277215___ Date: ___3/24/2023___
 *
 *  Online (Cyclic) Link: ________________________________________________________
 *
