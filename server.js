@@ -6,8 +6,7 @@
 * 
 *  Name: p__Kranti KC___ Student ID: ___146277215___ Date: ___3/24/2023___
 *
-*  Online (Cyclic) Link: ___________https://rich-cyan-bear-vest.cyclic.app
-_____________________________________________
+*  Online (Cyclic) Link: ___________https://rich-cyan-bear-vest.cyclic.app_____________________________________________
 *
 ********************************************************************************/ 
 
@@ -19,10 +18,10 @@ const streamifier = require('streamifier');
 const exphbs = require("express-handlebars");
 const path = require("path");
 const stripJs = require('strip-js');
-
+const authData = require("./auth-service")
 const app = express();
-
-
+const clientSessions = require("client-sessions");
+const mongoose = require('mongoose');
 
 const HTTP_PORT = process.env.PORT || 8080;
 
@@ -62,12 +61,37 @@ app.engine(".hbs", exphbs.engine({
         safeHTML: function(context){
             return stripJs(context);
         }
-    }
+    },
+//     layoutsDir: __dirname + "/views/layout",
+//   defaultLayout: 'main'
 }));
 
 app.set('view engine', '.hbs');
 
 app.use(express.static('public'));
+
+//client-sessions
+app.use(clientSessions({
+    cookieName: "Mysession", // this is the object name that will be added to 'req'
+    secret: "mysecretsession", // this should be a long un-guessable string.
+    duration: 2 * 60 * 1000, // duration of the session in milliseconds (2 minutes)
+    activeDuration: 1000 * 60 // the session will be extended by this many ms each request (1 minute)
+  }));
+
+  app.use(express.urlencoded({ extended: false }));
+
+  app.use(function(req, res, next) {
+    res.locals.session = req.session;
+    next();
+  });
+
+  function ensureLogin(req, res, next) {
+    if (req.session && req.session.user) {
+      next();
+    } else {
+      res.redirect("/login");
+    }
+  }
 
 app.use(function(req,res,next){
     let route = req.path.substring(1);
@@ -76,7 +100,9 @@ app.use(function(req,res,next){
     next();
 });
 
-app.use(express.urlencoded({extended: true}));
+
+
+app.use(express.urlencoded({ extended: true }));
 
 app.get('/', (req, res) => {
     res.redirect("/blog");
@@ -134,7 +160,7 @@ app.get('/blog', async (req, res) => {
 
 });
 
-app.get('/posts', (req, res) => {
+app.get('/posts',  (req, res) => {
 
     let queryPromise = null;
 
@@ -271,7 +297,7 @@ app.get('/blog/:id', async (req, res) => {
     res.render("blog", {data: viewData})
 });
 
-app.get('/categories', (req, res) => {
+app.get('/categories', ensureLogin, (req, res) => {
     blogData.getCategories()
         .then(data => {
             if (data.length > 0) {
@@ -358,10 +384,69 @@ app.use((req, res) => {
     res.status(404).render("404");
 })
 
-blogData.initialize().then(() => {
-    app.listen(HTTP_PORT, () => {
-        console.log('server listening on: ' + HTTP_PORT);
+// blogData.initialize().then(() => {
+//     app.listen(HTTP_PORT, () => {
+//         console.log('server listening on: ' + HTTP_PORT);
+//     });
+// }).catch((err) => {
+//     console.log(err);
+// })
+// GET route to render login view
+
+app.get("/login", function(req, res) {
+    res.render("login");
+  });
+  
+  // GET route to render register view
+app.get("/register", function(req, res) {
+    res.render("register");
+  });
+  
+  // POST route to register user
+  app.post("/register", function(req, res) {
+    authData.registerUser(req.body)
+    .then(() => {
+        res.render("register", { successMessage: "User created" });
+    })
+    .catch((err) => {
+        res.render("register", { errorMessage: err, userName: req.body.userName });
     });
-}).catch((err) => {
-    console.log(err);
-})
+  });
+  
+  // POST route to authenticate user
+  app.post("/login", function(req, res) {
+    req.body.userAgent = req.get('User-Agent');
+    authData.checkUser(req.body)
+    .then((user) => {
+        req.session.user = {
+            userName: user.userName,
+            email: user.email,
+            loginHistory: user.loginHistory
+        }
+        res.redirect("/students");
+    })
+    .catch((err) => {
+        res.render("login", { errorMessage: err, userName: req.body.userName });
+    });
+  });
+  
+  // GET route to logout user
+  app.get("/logout", function(req, res) {
+    req.session.reset();
+    res.redirect("/");
+  });
+  
+  // GET route to render userHistory view
+  app.get("/userHistory", ensureLogin, function(req, res) {
+    res.render("userHistory");
+  });
+
+blogData.initialize()
+.then(authData.initialize)
+.then(function(){
+    app.listen(HTTP_PORT, function(){
+        console.log("app listening on: " + HTTP_PORT)
+    });
+}).catch(function(err){
+    console.log("unable to start server: " + err);
+});
