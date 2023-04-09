@@ -34,12 +34,7 @@ cloudinary.config({
 
 const upload = multer();
 
-// formatDate: function(dateObj){
-//     let year = dateObj.getFullYear();
-//     let month = (dateObj.getMonth() + 1).toString();
-//     let day = dateObj.getDate().toString();
-//     return `${year}-${month.padStart(2, '0')}-${day.padStart(2,'0')}`;
-// }
+
 
 app.engine(".hbs", exphbs.engine({
     extname: ".hbs",
@@ -62,8 +57,7 @@ app.engine(".hbs", exphbs.engine({
             return stripJs(context);
         }
     },
-//     layoutsDir: __dirname + "/views/layout",
-//   defaultLayout: 'main'
+
 }));
 
 app.set('view engine', '.hbs');
@@ -72,8 +66,8 @@ app.use(express.static('public'));
 
 //client-sessions
 app.use(clientSessions({
-    cookieName: "Mysession", // this is the object name that will be added to 'req'
-    secret: "mysecretsession", // this should be a long un-guessable string.
+    cookieName: "session", // this is the object name that will be added to 'req'
+    secret: "mysecretcode", // this should be a long un-guessable string.
     duration: 2 * 60 * 1000, // duration of the session in milliseconds (2 minutes)
     activeDuration: 1000 * 60 // the session will be extended by this many ms each request (1 minute)
   }));
@@ -380,9 +374,9 @@ app.get('/posts/delete/:id', function(req, res) {
     });
   
 
-app.use((req, res) => {
-    res.status(404).render("404");
-})
+// app.use((req, res) => {
+//     res.status(404).render("404");
+// })
 
 // blogData.initialize().then(() => {
 //     app.listen(HTTP_PORT, () => {
@@ -414,21 +408,37 @@ app.get("/register", function(req, res) {
   });
   
   // POST route to authenticate user
-  app.post("/login", function(req, res) {
-    req.body.userAgent = req.get('User-Agent');
-    authData.checkUser(req.body)
-    .then((user) => {
-        req.session.user = {
-            userName: user.userName,
-            email: user.email,
-            loginHistory: user.loginHistory
-        }
-        res.redirect("/students");
-    })
-    .catch((err) => {
-        res.render("login", { errorMessage: err, userName: req.body.userName });
-    });
+//   app.post("/login", function(req, res) {
+//     req.body.userAgent = req.get('User-Agent');
+//     authData.checkUser(req.body)
+//     .then((user) => {
+//         req.session.user = {
+//             userName: user.userName,
+//             email: user.email,
+//             loginHistory: user.loginHistory
+//         }
+//         res.redirect("/posts");
+//     })
+//     .catch((err) => {
+//         res.render("login", { errorMessage: err, userName: req.body.userName });
+//     });
+//   });
+
+app.post("/login", async function(req, res) {
+    try {
+      req.body.userAgent = req.get('User-Agent');
+      const user = await authData.checkUser(req.body);
+      req.session.user = {
+        userName: user.userName,
+        email: user.email,
+        loginHistory: user.loginHistory
+      };
+      res.redirect("/posts");
+    } catch (err) {
+      res.render("login", { errorMessage: err, userName: req.body.userName });
+    }
   });
+  
   
   // GET route to logout user
   app.get("/logout", function(req, res) {
